@@ -1,21 +1,37 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertHabitSchema, insertHabitCompletionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get all habits
-  app.get("/api/habits", async (req, res) => {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const habits = await storage.getHabits();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+  // Get all habits (protected)
+  app.get("/api/habits", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const habits = await storage.getHabits(userId);
       const today = new Date().toISOString().split('T')[0];
       
       // Enrich habits with today's completion status and stats
       const enrichedHabits = await Promise.all(
         habits.map(async (habit) => {
-          const todayCompletion = await storage.getHabitCompletions(habit.id, today);
-          const allCompletions = await storage.getHabitCompletions(habit.id);
+          const todayCompletion = await storage.getHabitCompletions(userId, habit.id, today);
+          const allCompletions = await storage.getHabitCompletions(userId, habit.id);
           
           const isCompletedToday = todayCompletion.length > 0 && todayCompletion[0].completed;
           const completionRate = allCompletions.length > 0 
@@ -36,11 +52,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create habit
-  app.post("/api/habits", async (req, res) => {
+  // Create habit (protected)
+  app.post("/api/habits", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertHabitSchema.parse(req.body);
-      const habit = await storage.createHabit(validatedData);
+      const habit = await storage.createHabit({ ...validatedData, userId });
       res.status(201).json(habit);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -51,12 +68,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update habit
-  app.patch("/api/habits/:id", async (req, res) => {
+  // Update habit (protected)
+  app.patch("/api/habits/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
       const validatedData = insertHabitSchema.partial().parse(req.body);
-      const habit = await storage.updateHabit(id, validatedData);
+      const habit = await storage.updateHabit(id, userId, validatedData);
       
       if (!habit) {
         res.status(404).json({ message: "Habit not found" });
@@ -73,11 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete habit
-  app.delete("/api/habits/:id", async (req, res) => {
+  // Delete habit (protected)
+  app.delete("/api/habits/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
-      const deleted = await storage.deleteHabit(id);
+      const deleted = await storage.deleteHabit(id, userId);
       
       if (!deleted) {
         res.status(404).json({ message: "Habit not found" });
@@ -90,9 +109,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Toggle habit completion
-  app.post("/api/habits/:id/toggle", async (req, res) => {
+  // Toggle habit completion (protected)
+  app.post("/api/habits/:id/toggle", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
       const { date, completed } = req.body;
       
@@ -101,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const habit = await storage.getHabit(id);
+      const habit = await storage.getHabit(id, userId);
       if (!habit) {
         res.status(404).json({ message: "Habit not found" });
         return;
@@ -114,9 +134,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get habit completions for date range
-  app.get("/api/completions", async (req, res) => {
+  // Get habit completions for date range (protected)
+  app.get("/api/completions", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { startDate, endDate, habitId } = req.query;
       
       if (!startDate || !endDate) {
@@ -126,10 +147,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let completions;
       if (habitId) {
-        completions = await storage.getHabitCompletions(habitId as string);
+        completions = await storage.getHabitCompletions(userId, habitId as string);
         completions = completions.filter(c => c.date >= startDate && c.date <= endDate);
       } else {
-        completions = await storage.getHabitCompletionsByDateRange(startDate as string, endDate as string);
+        completions = await storage.getHabitCompletionsByDateRange(userId, startDate as string, endDate as string);
       }
       
       res.json(completions);
@@ -138,10 +159,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get analytics data
-  app.get("/api/analytics", async (req, res) => {
+  // Get analytics data (protected)
+  app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
-      const habits = await storage.getHabits();
+      const userId = req.user.claims.sub;
+      const habits = await storage.getHabits(userId);
       const today = new Date().toISOString().split('T')[0];
       
       // Get last 7 days for weekly progress
@@ -154,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const weeklyProgress = await Promise.all(
         weekDays.map(async (date) => {
-          const dayCompletions = await storage.getHabitCompletions(undefined, date);
+          const dayCompletions = await storage.getHabitCompletions(userId, undefined, date);
           const completed = dayCompletions.filter(c => c.completed).length;
           const total = habits.length;
           return {
@@ -171,12 +193,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }, {} as Record<string, number>);
 
       // Overall stats
-      const todayCompletions = await storage.getHabitCompletions(undefined, today);
+      const todayCompletions = await storage.getHabitCompletions(userId, undefined, today);
       const completedToday = todayCompletions.filter(c => c.completed).length;
       const totalHabits = habits.length;
       
       // Calculate overall completion rate
-      const allCompletions = await storage.getHabitCompletions();
+      const allCompletions = await storage.getHabitCompletions(userId);
       const overallCompletionRate = allCompletions.length > 0 
         ? Math.round((allCompletions.filter(c => c.completed).length / allCompletions.length) * 100)
         : 0;

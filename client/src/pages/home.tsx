@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Menu, Plus } from "lucide-react";
+import { Check, Menu, Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import HabitCard from "@/components/habit-card";
 import AddHabitModal from "@/components/add-habit-modal";
 import EditHabitModal from "@/components/edit-habit-modal";
@@ -17,6 +19,23 @@ export default function Home() {
   const [editingHabit, setEditingHabit] = useState<HabitWithCompletion | null>(null);
   const [mobileSection, setMobileSection] = useState<"today" | "analytics" | "habits">("today");
   const isMobile = useIsMobile();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, authLoading, toast]);
 
   const { data: habits = [], isLoading } = useQuery<HabitWithCompletion[]>({
     queryKey: ["/api/habits"],
@@ -65,6 +84,32 @@ export default function Home() {
             <h1 className="text-xl font-semibold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">HabitFlow</h1>
           </div>
           <div className="flex items-center space-x-3">
+            {user && (
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  {user.profileImageUrl && (
+                    <img 
+                      src={user.profileImageUrl} 
+                      alt="Profile" 
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  )}
+                  <span className="text-sm text-slate-600">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName} ${user.lastName}` 
+                      : user.email || 'User'}
+                  </span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/api/logout'}
+                  className="text-slate-600 hover:text-slate-800"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             {isMobile && (
               <Button variant="ghost" size="sm" className="backdrop-blur-sm">
                 <Menu className="h-4 w-4 text-slate-600" />
