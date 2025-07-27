@@ -22,32 +22,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? (allCompletions.filter(c => c.completed).length / allCompletions.length) * 100 
             : 0;
 
-          // Calculate current streak
-          let currentStreak = 0;
-          const sortedCompletions = allCompletions
-            .filter(c => c.completed)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          if (sortedCompletions.length > 0) {
-            const today = new Date();
-            let checkDate = new Date(today);
-            
-            for (const completion of sortedCompletions) {
-              const completionDate = new Date(completion.date);
-              if (completionDate.toDateString() === checkDate.toDateString()) {
-                currentStreak++;
-                checkDate.setDate(checkDate.getDate() - 1);
-              } else {
-                break;
-              }
-            }
-          }
-
           return {
             ...habit,
             isCompletedToday,
             completionRate: Math.round(completionRate),
-            currentStreak,
           };
         })
       );

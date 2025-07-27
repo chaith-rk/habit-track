@@ -7,6 +7,9 @@ This is a modern full-stack habit tracking application built with React, Express
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Analytics display: Tables instead of visual charts (3 simple tables preferred)
+Habit card design: Compact height with minimal padding
+Features removed: Habit streak counting functionality
 
 ## System Architecture
 

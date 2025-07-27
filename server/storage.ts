@@ -37,8 +37,10 @@ export class MemStorage implements IStorage {
   async createHabit(insertHabit: InsertHabit): Promise<Habit> {
     const id = randomUUID();
     const habit: Habit = {
-      ...insertHabit,
       id,
+      name: insertHabit.name,
+      category: insertHabit.category,
+      frequency: insertHabit.frequency || "daily",
       createdAt: new Date(),
     };
     this.habits.set(id, habit);
@@ -57,8 +59,10 @@ export class MemStorage implements IStorage {
   async deleteHabit(id: string): Promise<boolean> {
     const deleted = this.habits.delete(id);
     // Also delete all completions for this habit
-    for (const [key, completion] of this.habitCompletions) {
-      if (completion.habitId === id) {
+    const completionKeys = Array.from(this.habitCompletions.keys());
+    for (const key of completionKeys) {
+      const completion = this.habitCompletions.get(key);
+      if (completion && completion.habitId === id) {
         this.habitCompletions.delete(key);
       }
     }
@@ -78,8 +82,10 @@ export class MemStorage implements IStorage {
   async createHabitCompletion(insertCompletion: InsertHabitCompletion): Promise<HabitCompletion> {
     const id = randomUUID();
     const completion: HabitCompletion = {
-      ...insertCompletion,
       id,
+      habitId: insertCompletion.habitId,
+      date: insertCompletion.date,
+      completed: insertCompletion.completed ?? false,
       completedAt: insertCompletion.completed ? new Date() : null,
     };
     this.habitCompletions.set(id, completion);
@@ -88,7 +94,8 @@ export class MemStorage implements IStorage {
 
   async updateHabitCompletion(habitId: string, date: string, completed: boolean): Promise<HabitCompletion | undefined> {
     // Find existing completion
-    for (const [key, completion] of this.habitCompletions) {
+    const completionEntries = Array.from(this.habitCompletions.entries());
+    for (const [key, completion] of completionEntries) {
       if (completion.habitId === habitId && completion.date === date) {
         const updated = {
           ...completion,

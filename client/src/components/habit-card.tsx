@@ -47,7 +47,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
 
   return (
     <div className={cn(
-      "flex items-center p-3 rounded-lg border transition-colors",
+      "flex items-center py-2 px-3 rounded-lg border transition-colors",
       habit.isCompletedToday 
         ? "bg-emerald-50 border-emerald-200" 
         : "bg-white border-slate-200 hover:border-slate-300"
@@ -56,7 +56,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          "w-5 h-5 rounded-full mr-3 flex-shrink-0 p-0",
+          "w-4 h-4 rounded-full mr-3 flex-shrink-0 p-0",
           habit.isCompletedToday
             ? "bg-secondary hover:bg-secondary/90"
             : "border-2 border-slate-300 hover:border-primary"
@@ -65,7 +65,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
         disabled={toggleMutation.isPending}
       >
         {habit.isCompletedToday && (
-          <Check className="h-3 w-3 text-white" />
+          <Check className="h-2.5 w-2.5 text-white" />
         )}
       </Button>
       
@@ -85,7 +85,7 @@ export default function HabitCard({ habit }: HabitCardProps) {
         "text-xs font-medium",
         habit.isCompletedToday ? "text-emerald-600" : "text-slate-400"
       )}>
-        {habit.isCompletedToday ? "Completed" : "Pending"}
+        {habit.isCompletedToday ? "✓" : "○"}
       </div>
     </div>
   );

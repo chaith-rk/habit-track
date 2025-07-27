@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface AnalyticsData {
   totalHabits: number;
@@ -8,8 +7,6 @@ interface AnalyticsData {
   weeklyProgress: Array<{ date: string; completionRate: number }>;
   categoryStats: Record<string, number>;
 }
-
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
 
 export default function AnalyticsDashboard() {
   const { data: analytics, isLoading } = useQuery<AnalyticsData>({
@@ -36,14 +33,15 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  const weeklyChartData = analytics.weeklyProgress.map((day, index) => ({
-    name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(day.date).getDay()],
+  const weeklyTableData = analytics.weeklyProgress.map((day) => ({
+    day: new Date(day.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
     completion: day.completionRate,
   }));
 
-  const categoryChartData = Object.entries(analytics.categoryStats).map(([category, count]) => ({
-    name: category,
-    value: count,
+  const categoryTableData = Object.entries(analytics.categoryStats).map(([category, count]) => ({
+    category,
+    count,
+    percentage: analytics.totalHabits > 0 ? Math.round((count / analytics.totalHabits) * 100) : 0,
   }));
 
   return (
@@ -51,83 +49,106 @@ export default function AnalyticsDashboard() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-6">Analytics Dashboard</h3>
         
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-primary">{analytics.totalHabits}</div>
-            <div className="text-sm text-slate-600">Total Habits</div>
+        {/* Three Tables Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Table 1: Summary Stats */}
+          <div>
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Summary Stats</h4>
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-slate-600">Metric</th>
+                    <th className="text-right p-3 font-medium text-slate-600">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Total Habits</td>
+                    <td className="p-3 text-right font-semibold text-primary">{analytics.totalHabits}</td>
+                  </tr>
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Completed Today</td>
+                    <td className="p-3 text-right font-semibold text-secondary">{analytics.completedToday}</td>
+                  </tr>
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Overall Rate</td>
+                    <td className="p-3 text-right font-semibold text-accent">{analytics.overallCompletionRate}%</td>
+                  </tr>
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Remaining Today</td>
+                    <td className="p-3 text-right font-semibold text-slate-600">{analytics.totalHabits - analytics.completedToday}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="bg-emerald-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-secondary">{analytics.overallCompletionRate}%</div>
-            <div className="text-sm text-slate-600">Completion Rate</div>
-          </div>
-          <div className="bg-amber-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-accent">{analytics.completedToday}</div>
-            <div className="text-sm text-slate-600">Completed Today</div>
-          </div>
-        </div>
 
-        {/* Charts Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Weekly Progress Chart */}
+          {/* Table 2: Weekly Progress */}
           <div>
             <h4 className="text-sm font-medium text-slate-700 mb-3">Weekly Progress</h4>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyChartData}>
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#64748b' }}
-                  />
-                  <YAxis 
-                    domain={[0, 100]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#64748b' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="completion" 
-                    stroke="#10B981" 
-                    strokeWidth={2}
-                    dot={{ fill: '#10B981', strokeWidth: 0, r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-slate-600">Day</th>
+                    <th className="text-right p-3 font-medium text-slate-600">Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="max-h-48 overflow-y-auto">
+                  {weeklyTableData.length > 0 ? (
+                    weeklyTableData.map((day, index) => (
+                      <tr key={index} className="border-t border-slate-100">
+                        <td className="p-3 text-slate-700">{day.day}</td>
+                        <td className="p-3 text-right">
+                          <span className={`font-semibold ${
+                            day.completion >= 80 ? 'text-secondary' : 
+                            day.completion >= 50 ? 'text-accent' : 'text-slate-500'
+                          }`}>
+                            {day.completion}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={2} className="p-3 text-center text-slate-500">No data available</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
           
-          {/* Category Distribution */}
+          {/* Table 3: Category Distribution */}
           <div>
             <h4 className="text-sm font-medium text-slate-700 mb-3">Habit Categories</h4>
-            <div className="h-48">
-              {categoryChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryChartData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={60}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {categoryChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  No categories to display
-                </div>
-              )}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-slate-600">Category</th>
+                    <th className="text-right p-3 font-medium text-slate-600">Count</th>
+                    <th className="text-right p-3 font-medium text-slate-600">%</th>
+                  </tr>
+                </thead>
+                <tbody className="max-h-48 overflow-y-auto">
+                  {categoryTableData.length > 0 ? (
+                    categoryTableData.map((category, index) => (
+                      <tr key={index} className="border-t border-slate-100">
+                        <td className="p-3 text-slate-700">{category.category}</td>
+                        <td className="p-3 text-right font-semibold text-primary">{category.count}</td>
+                        <td className="p-3 text-right font-semibold text-slate-600">{category.percentage}%</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="p-3 text-center text-slate-500">No categories yet</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

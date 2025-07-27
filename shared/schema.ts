@@ -37,5 +37,4 @@ export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type HabitWithCompletion = Habit & {
   isCompletedToday: boolean;
   completionRate: number;
-  currentStreak: number;
 };
